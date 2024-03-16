@@ -145,7 +145,7 @@ ADVENTURE_OUTCOMES = [
     },
     {
         "type": "killed",
-        "chance": 2,
+        "chance": 1,
         "message": "You were killed during your adventure.\n\n**Game Over**"
     },
     {
