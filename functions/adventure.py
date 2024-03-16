@@ -45,9 +45,9 @@ async def adventure(player):
     outcome_embed.title = "Perilous Fate!"
     outcome_embed.description = outcome['message']
     player.dead = True
-    
-    await send_death_message(player)
-    
+
+    reason = "Death by adventure. Died to the 1%."
+    await send_death_message(player, reason)
 
   elif outcome['type'] == 'spirit_stones_large':
     outcome_embed.title = "Tremendous Wealth!"

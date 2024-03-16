@@ -47,7 +47,7 @@ def get_cultivation_stage(cultivation):
 
 
 # Function to send a DM message to a user
-async def send_death_message(player):
+async def send_death_message(player, reason):
   try:
     user = await bot.fetch_user(player.id)
 
@@ -64,6 +64,8 @@ async def send_death_message(player):
         title="You Died!",
         description="Hopefully you will do better next time...",
         color=nextcord.Color.red())
+
+    embed.add_field(name="__Cause of Death__", value=reason, inline=False)
 
     embed.add_field(name="__Stats Upon Death__",
                     value=f"**Sect:** {player.current_sect}\n"
@@ -89,6 +91,7 @@ async def send_death_message(player):
         title="A Cultivator Has Fallen",
         description=
         f"**{player.name}** from **{player.current_sect}** has met their demise...\n\n"
+        f"{reason}\n\n"
         f"**Years Spent:** {player.years_spent}\n"
         f"**Cultivation:** {player_cultivation_status}\n"
         f"**Deaths:** {player.deaths}",

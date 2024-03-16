@@ -171,7 +171,8 @@ class CultivationMenu(ui.View):
       await interaction.response.edit_message(embed=embed, view=None)
       self.player.dead = True
       self.player.deaths += 1
-      await send_death_message(self.player)
+      reason = "Death by miscalculation."
+      await send_death_message(self.player, reason)
       await self.player.save_data()
       return
 
@@ -309,7 +310,7 @@ def get_cultivation_stage(cultivation):
     ]
     index = (cultivation - 1) // 4  # Every stage has four ranks
     rank = get_ordinal((cultivation - 1) % 4 + 1)
-    return f"**{rank} Rank**, **{stages[index]}** Stage, of the **{realms[index]}** Realm."
+    return f"**{rank}** Rank, **{stages[index]}** Stage, of the **{realms[index]}** Realm."
   elif cultivation >= 65:
     return "**Eternal** Realm, **Immortal** Stage."
 
