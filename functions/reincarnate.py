@@ -9,7 +9,6 @@ from functions.give_title import give_title
 from functions.give_achievement import give_achievement
 from functions.initialize import active_menus
 
-
 class TalentsView(ui.View):
 
   def __init__(self, player, talent_ids):
@@ -235,6 +234,7 @@ class ReincarnationView(ui.View):
     super().__init__(timeout=180)  # Timeout for view interaction
     self.user_id = player.id
     self.player = player
+
 
   async def interaction_check(self, interaction: Interaction) -> bool:
     return interaction.user.id == self.user_id

@@ -32,6 +32,10 @@ def home():
 def discord():
   return redirect("https://discord.gg/7JkkXRA3nf")
 
+@app.route('/patreon')
+def patreon():
+  return redirect("https://www.patreon.com/Cultivatinginsanity")
+
 
 @app.route("/invite")
 def invite():

@@ -411,6 +411,7 @@ async def lock(ctx):
 
 if __name__ == '__main__':
   try:
+  
     # Start the Flask app in a new thread
     flask_thread = Thread(target=run_webserver)
     flask_thread.start()

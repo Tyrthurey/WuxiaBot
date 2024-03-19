@@ -12,6 +12,8 @@ flask = "^3.0.2"
 zenora = "^0.0.3.post1"
 supabase = "^2.4.0"
 waitress = "^3.0.0"
+asgiref = "^3.7.2"
+django = "^5.0.3"
 
 [tool.pyright]
 # https://github.com/microsoft/pyright/blob/main/docs/configuration.md
