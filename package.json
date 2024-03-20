@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@builder.io/widgets": "^1.2.24"
+  }
+}
