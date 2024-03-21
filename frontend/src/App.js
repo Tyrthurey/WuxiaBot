@@ -57,6 +57,29 @@ export default function CatchAllRoute() {
     username: data.current_user.username,
   };
 
+  // Construct the currentPlayer object from the data.player
+  const currentPlayer = {
+    id: data.player.id,
+    username: data.player.username,
+    displayname: data.player.displayname,
+    cultivationLevel: data.player.cultivation_level,
+    balance: data.player.bal,
+    usingCommand: data.player.using_command,
+    tutorial: data.player.tutorial,
+    finishedTutorial: data.player.finished_tutorial,
+    createdAt: data.player.created_at,
+    deaths: data.player.deaths,
+    dmCommands: data.player.dm_cmds,
+    helper: data.player.helper,
+    moderator: data.player.moderator,
+    admin: data.player.admin,
+    heartDemons: data.player.heart_demons,
+    yearsSpent: data.player.years_spent,
+    fastestYearScore: data.player.fastest_year_score,
+    maxCultivationAttained: data.player.max_cultivation_attained,
+    ascensions: data.player.ascensions,
+  };
+
   const playerCount = data.playercount;
   const serverCount = data.servercount;
   const achievementCount = data.achievementcount;
@@ -73,6 +96,7 @@ export default function CatchAllRoute() {
       <BuilderComponent
         model="page"
         data={{
+          currentPlayer,
           currentUser,
           playerCount,
           serverCount,

@@ -59,7 +59,10 @@ class Player:
     try:
       self.name = self.displayname if self.displayname != 'Default' else self.discord_user.name
     except AttributeError:
-      self.name = self.displayname
+      try:
+        self.name = self.discord_user.username
+      except AttributeError:
+        self.name = self.displayname
 
   async def update_bal(self):
     await asyncio.get_event_loop().run_in_executor(
