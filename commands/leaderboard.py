@@ -1,6 +1,6 @@
 import asyncio
 import nextcord
-from nextcord import slash_command
+from nextcord import slash_command, SlashOption
 from nextcord.ext import commands
 from nextcord.ui import Button, View
 from functions.initialize import supabase, bot
@@ -34,14 +34,25 @@ async def get_players_data(type, page):
 
 class LeaderboardView(View):
 
-  def __init__(self, bot, type='immortal', page=0):
-    super().__init__()
+  def __init__(self, bot, author_id, type, page):
+    super().__init__(timeout=120)
     self.bot = bot
     self.page = page
     self.type = type
+    self.author_id = author_id
+
+  async def on_timeout(self):
+    for item in self.children:
+      item.disabled = True  # Disable all buttons when the view times out
+    # This assumes there's a message to edit; adapt as necessary for your setup
+    await self.message.edit(view=self)
 
   async def interaction_check(self, interaction: nextcord.Interaction) -> bool:
-    # You can add checks here if necessary, like ensuring the user interacting is the one who asked for the leaderboard
+    if interaction.user.id != self.author_id:
+      # Send an ephemeral message if someone else tries to click the button
+      await interaction.response.send_message("These buttons are not for you!",
+                                              ephemeral=True)
+      return False
     return True
 
   @nextcord.ui.button(label='Previous', style=nextcord.ButtonStyle.blurple)
@@ -77,7 +88,7 @@ class LeaderboardView(View):
     players_data = await get_players_data(self.type, self.page)
     title = f"{self.type.capitalize()} Rankings"
     description = '\n'.join([
-        f"**{idx+1}.** {player['username']} - {self.format_ranking(player)}"
+        f"**{self.page * 10 + idx + 1}.** `{player['username']}` - {self.format_ranking(player)}"
         for idx, player in enumerate(players_data)
     ])
     embed = nextcord.Embed(title=title,
@@ -96,20 +107,53 @@ class LeaderboardView(View):
       return f"Deaths: {player.get('deaths', 0)}"
 
 
-class MyBot(commands.Cog):
+class Leaderboard(commands.Cog):
 
   def __init__(self, bot):
     self.bot = bot
 
   @slash_command(name="leaderboard", description="View the Heaven's rankings.")
-  async def command_slash(self, interaction: nextcord.Interaction):
-    await self.command(interaction)
+  async def command_slash(
+      self,
+      interaction: nextcord.Interaction,
+      type: str = SlashOption(
+          description="Choose the ranking type",
+          default="immortal",
+          choices=["mortal", "immortal", "ascended", "deceased"]),
+      page: int = SlashOption(description="Page number", default=0)):
+    await self.command(interaction, type, page)
 
-  @commands.command(name="leaderboard", help="View the Heaven's rankings.")
-  async def command_text(self, ctx):
-    await self.command(ctx)
+  @commands.command(name="leaderboard",
+                    aliases=["lb"],
+                    help="View the Heaven's rankings.")
+  async def command_text(self, ctx, *args):
+    # Parsing arguments for text command
+    leaderboard_types = ["mortal", "immortal", "ascended", "deceased"]
+    type_arg = None
+    page_arg = 0  # Default page
 
-  async def command(self, interaction):
+    if len(args) >= 1:
+      type_input = args[0].lower()
+      # Check for partial matches (at least 60% matching)
+      for t in leaderboard_types:
+        if t.startswith(type_input[:max(2, int(len(t) * 0.6))]):
+          type_arg = t
+          break
+
+    if len(args) >= 2:
+      try:
+        # Interpret "2" as page 6, for example
+        page_input = int(args[1]) - 1  # Convert to zero-based index
+        page_arg = max(0, page_input)  # Ensure non-negative
+      except ValueError:
+        pass  # Ignore if the second argument is not an integer
+
+    if not type_arg:
+      type_arg = "immortal"
+
+    await self.command(ctx, type_arg, page_arg)
+
+  async def command(self, interaction, type, page):
     print("COMMAND TRIGGERED")
     author = "Unknown"
     user_id = 0
@@ -143,14 +187,16 @@ class MyBot(commands.Cog):
       print("SOMETHING BROKE HORRIBLY")
 
     try:
-      view = LeaderboardView(bot)
+      view = LeaderboardView(bot, author_id=user_id, type=type, page=page)
       embed = await view.get_page()  # You will implement this method
 
       # Determine how to send the message based on the type of command
       if isinstance(interaction, commands.Context):  # Text command
-        await interaction.send(embed=embed, view=view)
+        message = await interaction.send(embed=embed, view=view)
+        view.message = message
       elif isinstance(interaction, nextcord.Interaction):  # Slash command
         await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_message()
       else:
         print("Command type not recognized.")
     except Exception as e:
@@ -166,4 +212,4 @@ class MyBot(commands.Cog):
 
 # Remember to add your cog to the bot
 def setup(bot):
-  bot.add_cog(MyBot(bot))
+  bot.add_cog(Leaderboard(bot))

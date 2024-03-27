@@ -16,7 +16,65 @@ from functions.rest import rest
 from functions.adventure import adventure
 from functions.you_die import send_death_message, send_ascend_message
 from functions.give_achievement import give_achievement
-from functions.initialize import active_menus, get_event_channel
+from functions.initialize import active_menus, get_event_channel, bot
+
+
+async def adventureresult(player, embed_description, pre_stage_info,
+                          post_stage_info, pre_heart_demons, post_heart_demons,
+                          interaction, post_cultivation_level):
+  heart_demon_status_pre = "None" if pre_heart_demons == 0 else "Negligible" if pre_heart_demons < 20 else "Very Low" if pre_heart_demons < 40 else "Low" if pre_heart_demons < 60 else "High" if pre_heart_demons < 80 else "Peak" if pre_heart_demons < 100 else "Consumed"
+
+  heart_demon_status_post = "None" if post_heart_demons == 0 else "Negligible" if post_heart_demons < 20 else "Very Low" if post_heart_demons < 40 else "Low" if post_heart_demons < 60 else "High" if post_heart_demons < 80 else "Peak" if post_heart_demons < 100 else "Consumed"
+
+  if heart_demon_status_post == "Consumed":
+    response_message = "Your heart demons have consumed you... **You have died.**"
+    embed = nextcord.Embed(title="Cultivation Update",
+                           description=response_message,
+                           color=nextcord.Color.red())
+    await interaction.response.edit_message(embed=embed, view=None)
+    player.dead = True
+    player.deaths += 1
+    if player.cultivation_level < 15:
+      reason = "Death due to suicide."
+    else:
+      reason = "Death by miscalculation."
+    await send_death_message(player, reason)
+    await player.save_data()
+    return False
+
+  if heart_demon_status_pre != heart_demon_status_post:
+    embed_description += f"\n\nHeart Demons: **{heart_demon_status_pre}** --> **{heart_demon_status_post}**."
+
+  if pre_stage_info != post_stage_info and post_cultivation_level < 65:
+    embed_description += f"\n\nYou are now on the {post_stage_info}."
+
+  if post_cultivation_level >= 65:
+    embed_description += "\n\n**You have achieved immortality!**\n\nCongratulations! You gain **+1 Karma**.\nThis world cannot hold you any longer. You ascend."
+    player.dead = True
+    player.ascensions += 1
+    if player.demonic:
+      player.demonic_ascensions += 1
+    else:
+      player.orthodox_ascensions += 1
+    await send_ascend_message(player)
+    player.karma += 1
+
+    player.cultivation_level = 0
+
+    if player.fastest_year_score is not None:
+      if player.years_spent < player.fastest_year_score:
+        player.fastest_year_score = player.years_spent
+    else:
+      player.fastest_year_score = player.years_spent
+    await player.save_score()
+    embed = nextcord.Embed(title="Ascension!",
+                           description=embed_description,
+                           color=nextcord.Color.blue())
+    await interaction.response.edit_message(embed=embed, view=None)
+
+    return False
+
+  return embed_description
 
 
 async def disable_previous_menu(user_id):
@@ -74,7 +132,10 @@ class CultivationMenu(ui.View):
           description=
           f"This command is on cooldown. You can use it again in `{cooldown_remaining:.2f}` seconds.",
           color=nextcord.Color.red())
-      await reply_message(embed=cooldown_embed, ephemeral=True)
+      msg = await reply_message(embed=cooldown_embed)
+
+      await asyncio.sleep(cooldown_remaining)
+      await msg.delete()
       return False
     else:
 
@@ -107,19 +168,67 @@ class CultivationMenu(ui.View):
     # Check if the player is dead
     if player.dead:
       print("Player is dead, triggering reincarnation process.")
-      await reincarnate_process(interaction, player, reply_message)
+      menu = CultivationMenu(player)
+      await reincarnate_process(interaction, player, menu)
       return
+
+    if player.years_spent >= player.lifeforce:
+      if 103 in self.player.chosen_talents and not self.player.revived:
+        self.player.revived = True
+        await self.player.save_data()
+      else:
+        if player.lifeforce <= 0:
+          response_message = "Your body has failed you. **You have died.**"
+          embed = nextcord.Embed(title="Cultivation Update",
+                                 description=response_message,
+                                 color=nextcord.Color.red())
+          await followup_message(embed=embed)
+          player.dead = True
+          player.deaths += 1
+          reason = "Death by natural causes."
+          await send_death_message(player, reason)
+          await player.save_data()
+          return
+        # Calculate the chance of death based on years spent
+        years_over = player.years_spent - player.lifeforce
+        death_chance = years_over // 10 * 5  # Increase by 5% every 10 years over 140
+
+        roll = random.randint(1, 100)
+        print("Years Spent:", player.years_spent)
+        print("Lifeforce:", player.lifeforce)
+        print("RNG:", roll)
+        print("Death Chance:", death_chance)
+
+        if roll < death_chance:
+          response_message = "Your age has failed you. **You have died.**"
+          embed = nextcord.Embed(title="Cultivation Update",
+                                 description=response_message,
+                                 color=nextcord.Color.red())
+          await followup_message(embed=embed, view=None)
+          player.dead = True
+          player.deaths += 1
+          reason = "Death by natural causes."
+          await send_death_message(player, reason)
+          await player.save_data()
+          return
+
+    color = nextcord.Color.red() if player.demonic else nextcord.Color.blue()
 
     player_cultivation_status = get_cultivation_stage(player.cultivation_level)
 
     # Constructing the embed message
-    heart_demon_status = "None" if player.heart_demons == 0 else "Negligible" if player.heart_demons < 20 else "Very Low" if player.heart_demons < 40 else "Low" if player.heart_demons < 60 else "High" if player.heart_demons < 80 else "Very High" if player.heart_demons < 100 else "Consumed"
+    heart_demon_status = "None" if player.heart_demons == 0 else "Negligible" if player.heart_demons < 20 else "Very Low" if player.heart_demons < 40 else "Low" if player.heart_demons < 60 else "High" if player.heart_demons < 80 else "Peak" if player.heart_demons < 100 else "Consumed"
+
+    if 100 in player.chosen_talents:
+      heart_demon_status = f"{min(player.heart_demons, 100)}%"
+    elif 101 in player.chosen_talents:
+      heart_demon_status = f"{player.heart_demons}%"
 
     embed = nextcord.Embed(
         title="",
         description=
         f"Hello, **{player.name}** of **{player.current_sect}**.\nYou have spent **{player.years_spent} year(s)** in this world.\n\nYou are at the {player_cultivation_status}\nHeart Demons: **{heart_demon_status}**\nSpirit Stones: **{player.bal}**\n\nWhat do you want to do this year?",
-        color=nextcord.Color.blue())
+        color=color)
     embed.set_author(name=interaction.user.display_name, icon_url=avatar_url)
 
     await disable_previous_menu(user_id)
@@ -153,30 +262,101 @@ class CultivationMenu(ui.View):
 
     await self.player.save_data()
 
+    color = nextcord.Color.red(
+    ) if self.player.demonic else nextcord.Color.blue()
+
     post_cultivation_level = self.player.cultivation_level
     post_heart_demons = self.player.heart_demons
 
     pre_stage_info = get_cultivation_stage(pre_cultivation_level)
     post_stage_info = get_cultivation_stage(post_cultivation_level)
 
-    heart_demon_status_pre = "None" if pre_heart_demons == 0 else "Negligible" if pre_heart_demons < 20 else "Very Low" if pre_heart_demons < 40 else "Low" if pre_heart_demons < 60 else "High" if pre_heart_demons < 80 else "Very High" if pre_heart_demons < 100 else "Consumed"
+    heart_demon_status_pre = "None" if pre_heart_demons == 0 else "Negligible" if pre_heart_demons < 20 else "Very Low" if pre_heart_demons < 40 else "Low" if pre_heart_demons < 60 else "High" if pre_heart_demons < 80 else "Peak" if pre_heart_demons < 100 else "Consumed"
 
-    heart_demon_status_post = "None" if post_heart_demons == 0 else "Negligible" if post_heart_demons < 20 else "Very Low" if post_heart_demons < 40 else "Low" if post_heart_demons < 60 else "High" if post_heart_demons < 80 else "Very High" if post_heart_demons < 100 else "Consumed"
-
-    if heart_demon_status_post == "Consumed":
-      response_message = "Your heart demons have consumed you... **You have died.**"
-      embed = nextcord.Embed(title="Cultivation Update",
-                             description=response_message,
-                             color=nextcord.Color.red())
-      await interaction.response.edit_message(embed=embed, view=None)
-      self.player.dead = True
-      self.player.deaths += 1
-      reason = "Death by miscalculation."
-      await send_death_message(self.player, reason)
-      await self.player.save_data()
-      return
+    heart_demon_status_post = "None" if post_heart_demons == 0 else "Negligible" if post_heart_demons < 20 else "Very Low" if post_heart_demons < 40 else "Low" if post_heart_demons < 60 else "High" if post_heart_demons < 80 else "Peak" if post_heart_demons < 100 else "Consumed"
 
     response_message = f"A year has passed.\nYou have been in this world for **{self.player.years_spent}** years.\n\nYour cultivation has {('not ' if result['result'] == 'wavering_heart' else '')}risen."
+
+    if self.player.years_spent >= self.player.lifeforce:
+      if 103 in self.player.chosen_talents and not self.player.revived:
+        self.player.revived = True
+        await self.player.save_data()
+      else:
+        # Existing else logic here
+        if self.player.lifeforce <= 0:
+          response_message = "Your body has failed you. **You have died.**"
+          embed = nextcord.Embed(title="Cultivation Update",
+                                 description=response_message,
+                                 color=nextcord.Color.red())
+          try:
+            await reply_message(embed=embed)
+          except nextcord.errors.InteractionResponded:
+            await followup_message(embed=embed)
+          self.player.dead = True
+          self.player.deaths += 1
+          reason = "Death by natural causes."
+          await send_death_message(self.player, reason)
+          await self.player.save_data()
+          return
+        # Calculate the chance of death based on years spent
+        years_over = self.player.years_spent - self.player.lifeforce
+        death_chance = years_over // 10 * 5  # Increase by 5% every 10 years over 140
+
+        roll = random.randint(1, 100)
+        print("Years Spent:", self.player.years_spent)
+        print("Lifeforce:", self.player.lifeforce)
+        print("RNG:", roll)
+        print("Death Chance:", death_chance)
+
+        if roll < death_chance:
+          response_message = "Your age has failed you. **You have died.**"
+          embed = nextcord.Embed(title="Cultivation Update",
+                                 description=response_message,
+                                 color=nextcord.Color.red())
+          try:
+            await reply_message(embed=embed, view=None)
+          except nextcord.errors.InteractionResponded:
+            await followup_message(embed=embed, view=None)
+          self.player.dead = True
+          self.player.deaths += 1
+          reason = "Death by natural causes."
+          await send_death_message(self.player, reason)
+          await self.player.save_data()
+          return
+
+    if self.player.heart_demons >= 100:
+      print("Chosen talents are: ", self.player.chosen_talents)
+      if 102 in self.player.chosen_talents:
+        response_message = "Your heart demons have consumed you... **But you are somehow still alive.**\n\nYou use Demonic Conversion and burn your lifeforce in order to be rid of the heart demons.\n\n**You have become a Demonic Cultivator.**\n\nYour cultivation has risen five times."
+        self.player.cultivation_level += 5
+        self.player.heart_demons = 0
+        self.player.lifeforce -= 30
+        self.player.demonic = True
+        post_cultivation_level = self.player.cultivation_level
+        heart_demon_status_pre = "Consumed"
+        heart_demon_status_post = "None"
+        color = nextcord.Color.red()
+        await self.player.save_data()
+      elif 103 in self.player.chosen_talents and not self.player.revived:
+        self.player.revived = True
+        self.player.heart_demons = 0
+        await self.player.save_data()
+      else:
+        response_message = "Your heart demons have consumed you... **You have died.**"
+        embed = nextcord.Embed(title="Cultivation Update",
+                               description=response_message,
+                               color=nextcord.Color.red())
+        await interaction.response.edit_message(embed=embed, view=None)
+        self.player.dead = True
+        self.player.deaths += 1
+        if self.player.cultivation_level < 15:
+          reason = "Death due to suicide."
+        else:
+          reason = "Death by miscalculation."
+        await send_death_message(self.player, reason)
+        await self.player.save_data()
+        return
+
     if heart_demon_status_pre != heart_demon_status_post:
       response_message += f"\n\nHeart Demons: **{heart_demon_status_pre}** --> **{heart_demon_status_post}**."
     if result['result'] == 'wavering_heart':
@@ -191,6 +371,12 @@ class CultivationMenu(ui.View):
       response_message += "\n\n**You have achieved immortality!**\n\nCongratulations! You gain **+1 Karma**.\nThis world cannot hold you any longer. You ascend."
       self.player.dead = True
       self.player.ascensions += 1
+
+      if self.player.demonic:
+        self.player.demonic_ascensions += 1
+      else:
+        self.player.orthodox_ascensions += 1
+
       await send_ascend_message(self.player)
       self.player.karma += 1
 
@@ -211,7 +397,7 @@ class CultivationMenu(ui.View):
 
     embed = nextcord.Embed(title="Cultivation Update",
                            description=response_message,
-                           color=nextcord.Color.blue())
+                           color=color)
 
     # Check for default profile picture
     avatar_url = interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar.url
@@ -235,8 +421,29 @@ class CultivationMenu(ui.View):
                                         interaction.response.send_message)
     if not cooldown_bool:
       return
+
+    pre_cultivation_level = self.player.cultivation_level
+    pre_heart_demons = self.player.heart_demons
+
     # Placeholder for adventure logic
-    response_embed = await adventure(self.player)
+    response_embed, embed_description = await adventure(self.player)
+
+    post_cultivation_level = self.player.cultivation_level
+    post_heart_demons = self.player.heart_demons
+
+    pre_stage_info = get_cultivation_stage(pre_cultivation_level)
+    post_stage_info = get_cultivation_stage(post_cultivation_level)
+
+    adventure_result = await adventureresult(self.player, embed_description,
+                                             pre_stage_info, post_stage_info,
+                                             pre_heart_demons,
+                                             post_heart_demons, interaction,
+                                             post_cultivation_level)
+
+    if not adventure_result:
+      return
+
+    response_embed.description = adventure_result
 
     # Check for default profile picture
     avatar_url = interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar.url
@@ -379,7 +586,14 @@ class Menu(commands.Cog):
           description=
           f"This command is on cooldown. You can use it again in `{cooldown_remaining:.2f}` seconds.",
           color=nextcord.Color.red())
-      await reply_message(embed=cooldown_embed, ephemeral=True)
+      try:
+        msg = await reply_message(embed=cooldown_embed)
+      except nextcord.errors.InteractionResponded:
+        msg = await followup_message(embed=cooldown_embed)
+
+      await asyncio.sleep(cooldown_remaining)
+      await msg.delete()
+
       return
 
     await disable_previous_menu(user_id)
@@ -397,28 +611,89 @@ class Menu(commands.Cog):
     # Check if the player is dead
     if player.dead:
       print("Player is dead, triggering reincarnation process.")
-      await reincarnate_process(interaction, player, reply_message)
+      # Before sending the new menu, save it to the active_menus dictionary
+      menu = CultivationMenu(player)
+      await reincarnate_process(interaction, player, menu)
       return
+
+    if player.years_spent >= player.lifeforce:
+      if 103 in player.chosen_talents and not player.revived:
+        player.revived = True
+        await player.save_data()
+      else:
+        # Existing else logic here
+        if player.lifeforce <= 0:
+          response_message = "Your body has failed you. **You have died.**"
+          embed = nextcord.Embed(title="Cultivation Update",
+                                 description=response_message,
+                                 color=nextcord.Color.red())
+          try:
+            await reply_message(embed=embed)
+          except nextcord.errors.InteractionResponded:
+            await followup_message(embed=embed)
+          player.dead = True
+          player.deaths += 1
+          reason = "Death by natural causes."
+          await send_death_message(player, reason)
+          await player.save_data()
+          return
+        # Calculate the chance of death based on years spent
+        years_over = player.years_spent - player.lifeforce
+        death_chance = years_over // 10 * 5  # Increase by 5% every 10 years over 140
+
+        roll = random.randint(1, 100)
+        print("Years Spent:", player.years_spent)
+        print("Lifeforce:", player.lifeforce)
+        print("RNG:", roll)
+        print("Death Chance:", death_chance)
+
+        if roll < death_chance:
+          response_message = "Your age has failed you. **You have died.**"
+          embed = nextcord.Embed(title="Cultivation Update",
+                                 description=response_message,
+                                 color=nextcord.Color.red())
+          try:
+            await reply_message(embed=embed, view=None)
+          except nextcord.errors.InteractionResponded:
+            await followup_message(embed=embed, view=None)
+          player.dead = True
+          player.deaths += 1
+          reason = "Death by natural causes."
+          await send_death_message(player, reason)
+          await player.save_data()
+          return
 
     player_cultivation_status = get_cultivation_stage(player.cultivation_level)
 
+    color = nextcord.Color.red() if player.demonic else nextcord.Color.blue()
+
     # Constructing the embed message
-    heart_demon_status = "None" if player.heart_demons == 0 else "Negligible" if player.heart_demons < 20 else "Very Low" if player.heart_demons < 40 else "Low" if player.heart_demons < 60 else "High" if player.heart_demons < 80 else "Very High" if player.heart_demons < 100 else "Consumed"
+    heart_demon_status = "None" if player.heart_demons == 0 else "Negligible" if player.heart_demons < 20 else "Very Low" if player.heart_demons < 40 else "Low" if player.heart_demons < 60 else "High" if player.heart_demons < 80 else "Peak" if player.heart_demons < 100 else "Consumed"
+
+    if 100 in player.chosen_talents:
+      heart_demon_status = f"{min(player.heart_demons, 100)}%"
+    elif 101 in player.chosen_talents:
+      heart_demon_status = f"{player.heart_demons}%"
 
     embed = nextcord.Embed(
         title="",
         description=
         f"Hello, **{player.name}** of **{player.current_sect}**.\nYou have spent **{player.years_spent} year(s)** in this world.\n\nYou are at the {player_cultivation_status}\nHeart Demons: **{heart_demon_status}**\nSpirit Stones: **{player.bal}**\n\nWhat do you want to do this year?",
-        color=nextcord.Color.blue())
+        color=color)
 
     embed.set_author(name=player.name, icon_url=avatar_url)
 
     # Before sending the new menu, save it to the active_menus dictionary
     menu = CultivationMenu(player)
     # Ensure the menu object has a way to access the message it's attached to (for editing it later)
-    menu.message = await reply_message(
-        embed=embed,
-        view=menu)  # Save the message object to the menu for later access
+    try:
+      menu.message = await reply_message(
+          embed=embed,
+          view=menu)  # Save the message object to the menu for later access
+    except nextcord.errors.InteractionResponded:
+      menu.message = await followup_message(
+          embed=embed,
+          view=menu)  # Save the message object to the menu for later access
     active_menus[user_id] = menu  # Update the active menu for this user
 
 

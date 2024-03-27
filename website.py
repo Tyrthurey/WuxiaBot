@@ -42,6 +42,72 @@ async def homepage():
   return render_template('index.html')
 
 
+@app.route('/api/leaderboard')
+async def api_leaderboard():
+  # Function to get and sort players data for each category
+  async def get_players_data(category):
+    response = await asyncio.get_event_loop().run_in_executor(
+        None, lambda: supabase.table('Players').select('*').execute())
+
+    data = response.data
+
+    if category == 'mortal':
+      sorted_data = sorted(data,
+                           key=lambda x: x['cultivation_level'],
+                           reverse=True)
+      sorted_data = [{
+          "rank": rank + 1,
+          "name": x['username'],
+          "cultivation_level": x['cultivation_level']
+      } for rank, x in enumerate(sorted_data)]
+    elif category == 'immortal':
+      sorted_data = sorted(
+          [d for d in data if d['fastest_year_score'] is not None],
+          key=lambda x: x['fastest_year_score'])
+      sorted_data = [{
+          "rank": rank + 1,
+          "name": x['username'],
+          "fastest_year_score": x['fastest_year_score']
+      } for rank, x in enumerate(sorted_data)]
+    elif category == 'ascended':
+      sorted_data = sorted([d for d in data if d.get('ascensions')],
+                           key=lambda x: x.get('ascensions', 0),
+                           reverse=True)
+      sorted_data = [{
+          "rank": rank + 1,
+          "name": x['username'],
+          "ascensions": x.get('ascensions', 0)
+      } for rank, x in enumerate(sorted_data)]
+    elif category == 'deceased':
+      sorted_data = sorted([d for d in data if d.get('deaths')],
+                           key=lambda x: x.get('deaths', 0),
+                           reverse=True)
+      sorted_data = [{
+          "rank": rank + 1,
+          "name": x['username'],
+          "deaths": x.get('deaths', 0)
+      } for rank, x in enumerate(sorted_data)]
+    else:
+      sorted_data = []
+
+    return sorted_data
+
+  # Asynchronously gather sorted data for all categories
+  mortal_rankings, immortal_rankings, ascended_rankings, deceased_rankings = await asyncio.gather(
+      get_players_data('mortal'), get_players_data('immortal'),
+      get_players_data('ascended'), get_players_data('deceased'))
+
+  # Combine all rankings into a single JSON response
+  leaderboard_data = {
+      "mortal": mortal_rankings,
+      "immortal": immortal_rankings,
+      "ascended": ascended_rankings,
+      "deceased": deceased_rankings
+  }
+
+  return jsonify(leaderboard_data)
+
+
 @app.route('/api/data')
 async def api_data():
   current_user = {

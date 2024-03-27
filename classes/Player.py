@@ -20,10 +20,27 @@ class Player:
     self.dead = data.get('dead', True)
     self.user_id = self.discord_user.id
     self.bal = data.get('bal', 0)
+    self.chosen_talents = data.get('chosen_talents', ["0"])
+    self.chosen_talent_names = data.get('chosen_talent_names',
+                                        ["Chalk Spirit Channels"])
 
     self.ascensions = data.get('ascensions', 0)
 
+    self.revived = data.get('revived', False)
+
+    self.year_of_reincarnation = data.get('year_of_reincarnation', 0)
+
+    self.total_bal = data.get('total_bal', 0)
+    self.total_insights = data.get('total_insights', 0)
+    self.total_wavering_hearts = data.get('total_wavering_hearts', 0)
+
     self.id = data.get('id', 0)
+
+    self.demonic_ascensions = data.get('demonic_ascensions', 0)
+    self.orthodox_ascensions = data.get('orthodox_ascensions', 0)
+
+    self.lifeforce = data.get('lifeforce', 140)
+    self.demonic = data.get('demonic', False)
 
     self.years_spent = data.get('years_spent', 0)
     self.fastest_year_score = data.get('fastest_year_score', None)
@@ -70,10 +87,24 @@ class Player:
             'bal': self.bal
         }).eq('id', self.discord_user.id).execute())
 
+  async def update_talents(self):
+    await asyncio.get_event_loop().run_in_executor(
+        None, lambda: supabase.table('Players').update(
+            {
+                'chosen_talents': self.chosen_talents,
+                'chosen_talent_names': self.chosen_talent_names
+            }).eq('id', self.id).execute())
+
   async def save_data(self):
     response = await asyncio.get_event_loop().run_in_executor(
         None, lambda: supabase.table('Players').update(
             {
+                'orthodox_ascensions': self.orthodox_ascensions,
+                'demonic_ascensions': self.demonic_ascensions,
+                'demonic': self.demonic,
+                'revived': self.revived,
+                'lifeforce': self.lifeforce,
+                'year_of_reincarnation': self.year_of_reincarnation,
                 'deaths': self.deaths,
                 'years_spent': self.years_spent,
                 'dead': self.dead,
@@ -81,7 +112,10 @@ class Player:
                 'current_sect': self.current_sect,
                 'karma': self.karma,
                 'bal': self.bal,
-                'cultivation_level': self.cultivation_level
+                'cultivation_level': self.cultivation_level,
+                'total_bal': self.total_bal,
+                'total_insights': self.total_insights,
+                'total_wavering_hearts': self.total_wavering_hearts
             }).eq('id', self.discord_user.id).execute())
     if not response:
       raise Exception('Failed to update player save_data.')
@@ -90,6 +124,8 @@ class Player:
     response = await asyncio.get_event_loop().run_in_executor(
         None, lambda: supabase.table('Players').update(
             {
+                'orthodox_ascensions': self.orthodox_ascensions,
+                'demonic_ascensions': self.demonic_ascensions,
                 'deaths': self.deaths,
                 'years_spent': self.years_spent,
                 'ascensions': self.ascensions,

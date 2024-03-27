@@ -9,6 +9,7 @@ from threading import Thread
 from website import run_webserver  # Import the Flask app runner
 from datetime import datetime, timezone
 import logging
+from functions.give_title import give_title
 
 logging.basicConfig(level=logging.INFO)
 
@@ -127,7 +128,20 @@ async def on_ready():
                     'members': guild.member_count
                 }).eq('server_id', guild.id).execute())
 
-        await asyncio.sleep(3)  # Prevent rate limiting
+        await asyncio.sleep(2)  # Prevent rate limiting
+
+  # top_players_response = await asyncio.get_event_loop().run_in_executor(
+  #     None, lambda: supabase.table('Players').select('*').order(
+  #         'fastest_year_score', desc=False).limit(3).execute())
+
+  # if top_players_response:
+  #   top_players = top_players_response.data
+  #   for index, player in enumerate(top_players, start=101):
+  #     logging.info(f'Username Awarded: {player["username"]} - Index: {index}')
+  #     player_id = player['id']
+  #     # player_id = 243351582052188170  # for testing
+  #     await give_title(player_id, index)
+  #     await asyncio.sleep(1)  # Prevent rate limiting
 
 
 @bot.event
@@ -172,8 +186,12 @@ async def on_message(message):
   if message.author == bot.user:
     return
 
-  # If the message does not start with the bot prefix, ignore it
-  if not message.content.startswith(prefix):
+  # If the message starts with any capitalization variation of 'wux', process it
+  if message.content.lower().startswith(prefix):
+    print(f"Message received: {message.content}")
+    message.content = prefix.lower() + message.content[len(prefix):]
+    print(f"Message content after processing: {message.content}")
+  else:
     return
 
   # If the message is sent in DMs, inform the user that the bot cannot be used in DMs and provide an invite link
@@ -411,7 +429,7 @@ async def lock(ctx):
 
 if __name__ == '__main__':
   try:
-  
+
     # Start the Flask app in a new thread
     flask_thread = Thread(target=run_webserver)
     flask_thread.start()

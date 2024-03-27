@@ -1,21 +1,13 @@
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-
 import "./index.css";
-
-// import App from "./App"; // Assuming you still want to use App for something
-
-import Leaderboard from "./Leaderboard";
-import SignUp from "./SignUp";
-import reportWebVitals from "./reportWebVitals";
 import { BuilderComponent, builder, useIsPreviewing } from "@builder.io/react";
 import "@builder.io/widgets";
 
 builder.init("d3359313752844e5b43d36d99db54022");
 
-function Index() {
+function SignUp() {
   const isPreviewingInBuilder = useIsPreviewing();
   const [notFound, setNotFound] = useState(false);
   const [content, setContent] = useState(null);
@@ -133,32 +125,5 @@ function Index() {
     />
   );
 }
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/leaderboard" element={<Leaderboard />} />
-        <Route path="/signup" element={<SignUp />} />
-        {/* Add more routes as needed */}
-        <Route
-          path="*"
-          element={
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100vh",
-              }}
-            >
-              <h1>404 - Page Not Found</h1>
-            </div>
-          }
-        />
-      </Routes>
-    </BrowserRouter>
-  </React.StrictMode>
-);
-reportWebVitals();
+
+export default SignUp;

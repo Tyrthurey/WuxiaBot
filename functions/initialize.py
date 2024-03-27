@@ -19,6 +19,9 @@ bot = commands.Bot(command_prefix=prefix,
 #the main bot guild
 guild_id = 1137866165570506927
 
+# # testing guild:
+# guild_id = 556783971136962566
+
 event_channel_name = "wux-events"
 secret_log_channel_name = "wux-secret-log"
 
@@ -160,7 +163,7 @@ ADVENTURE_OUTCOMES = [
         "type":
         "spirit_stones_low",
         "chance":
-        48,
+        28,
         "message":
         "You found a low amount of Spirit Stones.\n\n**+150** Spirit Stones"
     },
@@ -171,6 +174,22 @@ ADVENTURE_OUTCOMES = [
         10,
         "message":
         "You found a decent amount of Spirit Stones.\n\n**+270** Spirit Stones"
+    },
+    {
+        "type":
+        "50_life_force",
+        "chance":
+        15,
+        "message":
+        "You found something that can increase your lifeforce!\n\n**+50 Years of Lifeforce**"
+    },
+    {
+        "type":
+        "80_life_force",
+        "chance":
+        5,
+        "message":
+        "You found something that can increase your lifeforce!\n\n**+80 Years of Lifeforce**"
     },
     {
         "type": "nothing",
