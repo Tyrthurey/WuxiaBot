@@ -16,11 +16,11 @@ bot = commands.Bot(command_prefix=prefix,
                    help_command=None,
                    case_insensitive=True)
 
-#the main bot guild
-guild_id = 1137866165570506927
+# #the main bot guild
+# guild_id = 1137866165570506927
 
-# # testing guild:
-# guild_id = 556783971136962566
+# testing guild:
+guild_id = 556783971136962566
 
 event_channel_name = "wux-events"
 secret_log_channel_name = "wux-secret-log"

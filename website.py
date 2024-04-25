@@ -13,13 +13,13 @@ from functions.initialize import supabase
 from classes.Player import Player
 import requests
 
-website = "cultivatinginsanity.com"
-client_id = "1217236373208039504"
+# website = "cultivatinginsanity.com"
+# client_id = "1217236373208039504"
 
-# # dev site
-# website = "f92e22d0-556f-460b-96d7-a2bc3920a4e6-00-1eyvu4gm9ri3.worf.replit.dev"
-# # dev client
-# client_id = "530708819458654219"
+# dev site
+website = "f92e22d0-556f-460b-96d7-a2bc3920a4e6-00-1eyvu4gm9ri3.worf.replit.dev"
+# dev client
+client_id = "530708819458654219"
 
 redirect_uri = f"https://{website}/oauth/callback"
 

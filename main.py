@@ -10,6 +10,12 @@ from website import run_webserver  # Import the Flask app runner
 from datetime import datetime, timezone
 import logging
 from functions.give_title import give_title
+from nextcord.ext import tasks
+from pathlib import Path
+from datetime import datetime, timedelta, timezone
+from bs4 import BeautifulSoup
+import requests
+import json
 
 logging.basicConfig(level=logging.INFO)
 
@@ -426,6 +432,264 @@ async def lock(ctx):
   else:
     await ctx.send("You do not have permission to use this command.")
 
+
+previous_data = {}
+
+# Based on GMT time
+set_hour = 12
+set_minute = 00
+
+
+
+@tasks.loop(hours=24)
+async def scrape_and_send_data():
+  true = True
+  # This function runs every 24 hours at 1pm GMT
+  current_time = datetime.utcnow()
+  if current_time.hour == set_hour:  # Check if it's 1pm GMT
+    logging.info("Scraping data...")
+    print("Scraping and sending data...")
+    fiction_ids = [77238, 71319, 82770, 83298]
+    for fiction_id in fiction_ids:
+      logging.info(f"Scraping data for fiction ID {fiction_id}...")
+      print(f"Scraping data for fiction ID: {fiction_id}")
+      url = f'https://www.royalroad.com/fiction/{fiction_id}/'
+      response = requests.get(url)
+
+      if response.status_code == 200:
+        soup = BeautifulSoup(response.content, 'html.parser')
+        data_elements = soup.find_all('li',
+                                      class_='bold uppercase font-red-sunglo')
+        data_values = [element.text.strip() for element in data_elements]
+        data_keys = [
+            'TOTAL VIEWS', 'AVERAGE VIEWS', 'FOLLOWERS', 'FAVORITES',
+            'RATINGS', 'PAGES'
+        ]
+        data = dict(zip(data_keys, data_values))
+
+        # Extract the title
+        title_element = soup.find('h1', class_='font-white')
+        if title_element:
+          title_text = title_element.text.strip()
+          data['TITLE'] = title_text
+        else:
+          data['TITLE'] = 'Title not found'
+
+        print(f"Data for fiction ID {fiction_id}: {data}")
+        logging.info(f"Data for fiction ID {fiction_id}: {data}")
+
+        overall_score_element = soup.find('li',
+                                          class_='bold uppercase list-item',
+                                          text='Overall Score')
+        if overall_score_element:
+          overall_score_span = overall_score_element.find_next_sibling(
+              'li').find('span', class_='popovers')
+          overall_score = overall_score_span[
+              'data-content'] if overall_score_span else 'N/A'
+          overall_score = overall_score.split('/')[0].strip()
+
+        data['OVERALL SCORE'] = overall_score
+
+        # Check if the text file exists, if not, create it
+        if not os.path.exists(f'fic_data/scraped_data_{fiction_id}.txt'):
+          with open(f'fic_data/scraped_data_{fiction_id}.txt', 'w') as file:
+            file.write('{}')  # Create an empty JSON object in the file
+
+        # Load previous data from the text file
+        with open(f'fic_data/scraped_data_{fiction_id}.txt', 'r') as file:
+          previous_data = json.load(file)
+
+        change = 0
+
+        outcome = [{"type": "text", "text": "No changes."}]
+        for key in data:
+          if key == "FOLLOWERS":
+            if key in previous_data and data[key] != previous_data[key]:
+              previous_value = previous_data[key]
+              current_value = data[key]
+              try:
+                # Convert values to numbers for comparison
+                previous_number = int(previous_value.replace(',', ''))
+                current_number = int(current_value.replace(',', ''))
+                change = current_number - previous_number
+                if change > 0:
+                  outcome = [{
+                      "type": "text",
+                      "text": "FOLLOWERS",
+                      "style": {
+                          "bold": true
+                      }
+                  }, {
+                      "type": "text",
+                      "text": " — "
+                  }, {
+                      "type": "text",
+                      "text": "INCREASE",
+                      "style": {
+                          "bold": true
+                      }
+                  }, {
+                      "type": "text",
+                      "text": f": +{change}"
+                  }]
+
+                elif change < 0:
+                  outcome = [{
+                      "type": "text",
+                      "text": "FOLLOWERS",
+                      "style": {
+                          "bold": true
+                      }
+                  }, {
+                      "type": "text",
+                      "text": " — "
+                  }, {
+                      "type": "text",
+                      "text": "DECREASE",
+                      "style": {
+                          "bold": true
+                      }
+                  }, {
+                      "type": "text",
+                      "text": f": -{change}"
+                  }]
+
+              except ValueError:
+                # Handle non-numeric data (like OVERALL SCORE)
+                if previous_value != current_value:
+                  print("Error")
+
+        # Save new data to text file
+        with open(f'fic_data/scraped_data_{fiction_id}.txt', 'w') as file:
+          file.write(json.dumps(data, indent=4))
+
+        payload = {
+            "attachments": [{
+                "color":
+                "#36a64f",
+                "blocks": [{
+                    "type":
+                    "rich_text",
+                    "elements": [{
+                        "type":
+                        "rich_text_section",
+                        "elements": [{
+                            "type": "text",
+                            "text": f"{data['TITLE']} — Statistics",
+                            "style": {
+                                "bold": true
+                            }
+                        }]
+                    }]
+                }, {
+                    "type": "divider"
+                }, {
+                    "type":
+                    "rich_text",
+                    "elements": [{
+                        "type":
+                        "rich_text_list",
+                        "style":
+                        "bullet",
+                        "indent":
+                        0,
+                        "border":
+                        0,
+                        "elements": [{
+                            "type":
+                            "rich_text_section",
+                            "elements": [{
+                                "type": "text",
+                                "text": "TOTAL VIEWS",
+                                "style": {
+                                    "bold": true
+                                }
+                            }, {
+                                "type": "text",
+                                "text": f": {data['TOTAL VIEWS']}"
+                            }]
+                        }, {
+                            "type":
+                            "rich_text_section",
+                            "elements": [{
+                                "type": "text",
+                                "text": "FOLLOWERS",
+                                "style": {
+                                    "bold": true
+                                }
+                            }, {
+                                "type": "text",
+                                "text": f": {data['FOLLOWERS']}"
+                            }]
+                        }, {
+                            "type":
+                            "rich_text_section",
+                            "elements": [{
+                                "type": "text",
+                                "text": "FAVORITES",
+                                "style": {
+                                    "bold": true
+                                }
+                            }, {
+                                "type": "text",
+                                "text": f": {data['FAVORITES']}"
+                            }]
+                        }]
+                    }]
+                }, {
+                    "type": "divider"
+                }, {
+                    "type":
+                    "rich_text",
+                    "elements": [{
+                        "type": "rich_text_section",
+                        "elements": outcome
+                    }]
+                }]
+            }]
+        }
+
+        # Send message to Slack via webhook
+        webhook_url = "https://hooks.slack.com/services/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"
+        # # (for testing)
+        # webhook_url = "https://hooks.slack.com/services/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"
+        response = requests.post(webhook_url, json=payload)
+        if response.status_code != 200:
+          logging.info(
+              f"Failed to send message to Slack. Status code: {response.status_code}"
+          )
+          print(
+              f"Error sending message to Slack: {response.status_code} {response.text}"
+          )
+
+        await asyncio.sleep(10)
+      else:
+        logging.info(f"Failed to retrieve data for fiction ID {fiction_id}")
+        print('Failed to retrieve the webpage')
+
+
+@scrape_and_send_data.before_loop
+async def before_scheduled_task():
+  await bot.wait_until_ready()
+  current_time = datetime.utcnow()
+  target_time = current_time.replace(hour=set_hour,
+                                     minute=set_minute,
+                                     second=10,
+                                     microsecond=0)
+  if current_time.hour >= set_hour:  # If it's past 12pm GMT, schedule for the next day
+    target_time += timedelta(days=1)
+  seconds_until_start = (target_time - current_time).total_seconds()
+  minutes_until_start = seconds_until_start / 60
+  hours_until_start = minutes_until_start / 60
+  print("TIME (SECONDS) UNTIL START: ", seconds_until_start)
+  print("TIME (MINUTES) UNTIL START: ", minutes_until_start)
+  print(f"TIME (HOURS) UNTIL START: {hours_until_start:.2f}")
+  logging.info(f"TIME (HOURS) UNTIL START: {hours_until_start:.2f}")
+  logging.info("Starting the scheduled task...")
+  await asyncio.sleep(seconds_until_start)
+
+
+scrape_and_send_data.start()
 
 if __name__ == '__main__':
   try:

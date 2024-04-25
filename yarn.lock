@@ -53,7 +53,7 @@
     "@babel/helper-validator-identifier" "^7.22.20"
     to-fast-properties "^2.0.0"
 
-"@builder.io/react@>=1.1.0":
+"@builder.io/react@^3.2.6", "@builder.io/react@>=1.1.0":
   version "3.2.6"
   resolved "https://registry.npmjs.org/@builder.io/react/-/react-3.2.6.tgz"
   integrity sha512-3VyY3UXydhhjMXu+0sm187jNzQ59WFyTihok47/ZWHyKYJ1tbtpWaoi7pvrUlc89Kcg1pTmY0IipVygk+oO1pg==

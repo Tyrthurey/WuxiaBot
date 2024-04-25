@@ -616,52 +616,52 @@ class Menu(commands.Cog):
       await reincarnate_process(interaction, player, menu)
       return
 
-    if player.years_spent >= player.lifeforce:
-      if 103 in player.chosen_talents and not player.revived:
-        player.revived = True
-        await player.save_data()
-      else:
-        # Existing else logic here
-        if player.lifeforce <= 0:
-          response_message = "Your body has failed you. **You have died.**"
-          embed = nextcord.Embed(title="Cultivation Update",
-                                 description=response_message,
-                                 color=nextcord.Color.red())
-          try:
-            await reply_message(embed=embed)
-          except nextcord.errors.InteractionResponded:
-            await followup_message(embed=embed)
-          player.dead = True
-          player.deaths += 1
-          reason = "Death by natural causes."
-          await send_death_message(player, reason)
-          await player.save_data()
-          return
-        # Calculate the chance of death based on years spent
-        years_over = player.years_spent - player.lifeforce
-        death_chance = years_over // 10 * 5  # Increase by 5% every 10 years over 140
+    # if player.years_spent >= player.lifeforce:
+    #   if 103 in player.chosen_talents and not player.revived:
+    #     player.revived = True
+    #     await player.save_data()
+    #   else:
+    #     # Existing else logic here
+    #     if player.lifeforce <= 0:
+    #       response_message = "Your body has failed you. **You have died.**"
+    #       embed = nextcord.Embed(title="Cultivation Update",
+    #                              description=response_message,
+    #                              color=nextcord.Color.red())
+    #       try:
+    #         await reply_message(embed=embed)
+    #       except nextcord.errors.InteractionResponded:
+    #         await followup_message(embed=embed)
+    #       player.dead = True
+    #       player.deaths += 1
+    #       reason = "Death by natural causes."
+    #       await send_death_message(player, reason)
+    #       await player.save_data()
+    #       return
+    #     # Calculate the chance of death based on years spent
+    #     years_over = player.years_spent - player.lifeforce
+    #     death_chance = years_over // 10 * 5  # Increase by 5% every 10 years over 140
 
-        roll = random.randint(1, 100)
-        print("Years Spent:", player.years_spent)
-        print("Lifeforce:", player.lifeforce)
-        print("RNG:", roll)
-        print("Death Chance:", death_chance)
+    #     roll = random.randint(1, 100)
+    #     print("Years Spent:", player.years_spent)
+    #     print("Lifeforce:", player.lifeforce)
+    #     print("RNG:", roll)
+    #     print("Death Chance:", death_chance)
 
-        if roll < death_chance:
-          response_message = "Your age has failed you. **You have died.**"
-          embed = nextcord.Embed(title="Cultivation Update",
-                                 description=response_message,
-                                 color=nextcord.Color.red())
-          try:
-            await reply_message(embed=embed, view=None)
-          except nextcord.errors.InteractionResponded:
-            await followup_message(embed=embed, view=None)
-          player.dead = True
-          player.deaths += 1
-          reason = "Death by natural causes."
-          await send_death_message(player, reason)
-          await player.save_data()
-          return
+    #     if roll < death_chance:
+    #       response_message = "Your age has failed you. **You have died.**"
+    #       embed = nextcord.Embed(title="Cultivation Update",
+    #                              description=response_message,
+    #                              color=nextcord.Color.red())
+    #       try:
+    #         await reply_message(embed=embed, view=None)
+    #       except nextcord.errors.InteractionResponded:
+    #         await followup_message(embed=embed, view=None)
+    #       player.dead = True
+    #       player.deaths += 1
+    #       reason = "Death by natural causes."
+    #       await send_death_message(player, reason)
+    #       await player.save_data()
+    #       return
 
     player_cultivation_status = get_cultivation_stage(player.cultivation_level)
 
